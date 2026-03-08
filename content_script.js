@@ -37,6 +37,9 @@ if (typeof window.dotGitInjected === 'undefined') {
     const DS_STORE = "/.DS_Store";
     const DS_STORE_HEADER = "\x00\x00\x00\x01Bud1";
 
+    const THUMBS_DB = "/Thumbs.db";
+    const THUMBS_DB_HEADER = "\xD0\xCF\x11\xE0";
+
     const SECURITYTXT_PATHS = [
         "/.well-known/security.txt",
         "/security.txt",
@@ -195,6 +198,29 @@ if (typeof window.dotGitInjected === 'undefined') {
         return false;
     }
 
+    // Check for exposed Thumbs.db file
+    async function checkThumbsDb(url) {
+        const to_check = url + THUMBS_DB;
+        
+        try {
+            const response = await fetchWithTimeout(to_check, {
+                redirect: "manual",
+                timeout: 10000
+            });
+            
+            if (response.status === 200) {
+                const text = await response.text();
+                if (text.startsWith(THUMBS_DB_HEADER)) {
+                    return true;
+                }
+            }
+        } catch (error) {
+            // Ignore error
+        }
+        
+        return false;
+    }
+
     // Check for security.txt file
     async function checkSecuritytxt(url) {
         for (const path of SECURITYTXT_PATHS) {
@@ -305,6 +331,7 @@ if (typeof window.dotGitInjected === 'undefined') {
                 options.functions.hg ? checkHg(url) : Promise.resolve(false),
                 options.functions.env ? checkEnv(url) : Promise.resolve(false),
                 options.functions.ds_store ? checkDSStore(url) : Promise.resolve(false),
+                options.functions.thumbs_db ? checkThumbsDb(url) : Promise.resolve(false),
                 options.check_securitytxt ? checkSecuritytxt(url) : Promise.resolve(false),
                 options.functions.git && options.check_opensource ? isOpenSource(url) : Promise.resolve(false)
             ]);
@@ -317,6 +344,7 @@ if (typeof window.dotGitInjected === 'undefined') {
             if (hg) types.push('hg');
             if (env) types.push('env');
             if (ds_store) types.push('ds_store');
+            if (thumbs_db) types.push('thumbs_db');
 
             debugLog('Found types:', types);
 
@@ -347,6 +375,7 @@ if (typeof window.dotGitInjected === 'undefined') {
                 hg,
                 env,
                 ds_store,
+                thumbs_db,
                 securitytxt,
                 opensource
             };
@@ -358,6 +387,7 @@ if (typeof window.dotGitInjected === 'undefined') {
                 hg: false,
                 env: false,
                 ds_store: false,
+                thumbs_db: false,
                 securitytxt: false,
                 opensource: false,
                 error: error.message
@@ -385,6 +415,7 @@ if (typeof window.dotGitInjected === 'undefined') {
                     hg: false,
                     env: false,
                     ds_store: false,
+                    thumbs_db: false,
                     securitytxt: false,
                     opensource: false,
                     error: error.message
